@@ -3577,7 +3577,7 @@ macro_rules! uint_impl {
             }
         }
 
-        /// Returns the square root of the number, rounded down.
+        /// Returns the principal (non-negative) square root of the number, rounded down.
         ///
         /// # Examples
         ///

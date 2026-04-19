@@ -1888,7 +1888,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
             intrinsics::ctpop(self.get()) < 2
         }
 
-        /// Returns the square root of the number, rounded down.
+        /// Returns the principal (non-negative) square root of the number, rounded down.
         ///
         /// # Examples
         ///
