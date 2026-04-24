@@ -846,7 +846,7 @@ impl<T: PointeeSized> Copy for PhantomData<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PointeeSized> Clone for PhantomData<T> {
     fn clone(&self) -> Self {
-        Self
+        *self
     }
 }
 
@@ -1095,9 +1095,13 @@ pub macro ConstParamTy($item:item) {
     /* compiler built-in */
 }
 
+// For `adt_const_params` to be recognized as a feature
+#[unstable(feature = "adt_const_params", issue = "95174")]
+const _: () = ();
+
 // FIXME(adt_const_params): handle `ty::FnDef`/`ty::Closure`
 marker_impls! {
-    #[unstable(feature = "adt_const_params", issue = "95174")]
+    #[unstable(feature = "min_adt_const_params", issue = "154042")]
     ConstParamTy_ for
         usize, u8, u16, u32, u64, u128,
         isize, i8, i16, i32, i64, i128,

@@ -40,6 +40,7 @@ use rustc_hir as hir;
 use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
+use rustc_hir::definitions::PerParentDisambiguatorState;
 use rustc_hir::{LangItem, attrs as attr, find_attr};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
@@ -96,7 +97,8 @@ pub use self::predicate::{
     PolyExistentialPredicate, PolyExistentialProjection, PolyExistentialTraitRef,
     PolyProjectionPredicate, PolyRegionOutlivesPredicate, PolySubtypePredicate, PolyTraitPredicate,
     PolyTraitRef, PolyTypeOutlivesPredicate, Predicate, PredicateKind, ProjectionPredicate,
-    RegionOutlivesPredicate, SubtypePredicate, TraitPredicate, TraitRef, TypeOutlivesPredicate,
+    RegionConstraint, RegionEqPredicate, RegionOutlivesPredicate, SubtypePredicate, TraitPredicate,
+    TraitRef, TypeOutlivesPredicate,
 };
 pub use self::region::{
     EarlyParamRegion, LateParamRegion, LateParamRegionKind, Region, RegionKind, RegionVid,
@@ -224,6 +226,8 @@ pub struct ResolverAstLowering<'tcx> {
 
     // Information about delegations which is used when handling recursive delegations
     pub delegation_infos: LocalDefIdMap<DelegationInfo>,
+
+    pub per_parent_disambiguators: LocalDefIdMap<Steal<PerParentDisambiguatorState>>,
 }
 
 #[derive(Debug)]
@@ -1734,29 +1738,6 @@ impl<'tcx> TyCtxt<'tcx> {
         } else {
             self.attrs_for_def(did).iter().filter(filter_fn)
         }
-    }
-
-    #[deprecated = "Though there are valid usecases for this method, especially when your attribute is not a parsed attribute, usually you want to call rustc_hir::find_attr! instead."]
-    pub fn get_attr(self, did: impl Into<DefId>, attr: Symbol) -> Option<&'tcx hir::Attribute> {
-        if cfg!(debug_assertions) && !rustc_feature::is_valid_for_get_attr(attr) {
-            let did: DefId = did.into();
-            bug!("get_attr: unexpected called with DefId `{:?}`, attr `{:?}`", did, attr);
-        } else {
-            #[allow(deprecated)]
-            self.get_attrs(did, attr).next()
-        }
-    }
-
-    /// Determines whether an item is annotated with an attribute.
-    #[deprecated = "Though there are valid usecases for this method, especially when your attribute is not a parsed attribute, usually you want to call rustc_hir::find_attr! instead."]
-    pub fn has_attr(self, did: impl Into<DefId>, attr: Symbol) -> bool {
-        #[allow(deprecated)]
-        self.get_attrs(did, attr).next().is_some()
-    }
-
-    /// Determines whether an item is annotated with a multi-segment attribute
-    pub fn has_attrs_with_path(self, did: impl Into<DefId>, attrs: &[Symbol]) -> bool {
-        self.get_attrs_by_path(did.into(), attrs).next().is_some()
     }
 
     /// Returns `true` if this is an `auto trait`.

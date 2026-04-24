@@ -494,7 +494,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // There are a few types which get autopromoted when passed via varargs
                 // in C but we just error out instead and require explicit casts.
+                //
+                // We use implementations of VaArgSafe as the source of truth. On some embedded
+                // targets, c_double is f32 and c_int/c_uing are i16/u16, and these types implement
+                // VaArgSafe there. On all other targets, these types do not implement VaArgSafe.
+                //
+                // cfg(bootstrap): change the if let to an unwrap.
                 let arg_ty = self.structurally_resolve_type(arg.span, arg_ty);
+                if let Some(trait_def_id) = tcx.lang_items().va_arg_safe()
+                    && self
+                        .type_implements_trait(trait_def_id, [arg_ty], self.param_env)
+                        .must_apply_modulo_regions()
+                {
+                    continue;
+                }
+
                 match arg_ty.kind() {
                     ty::Float(ty::FloatTy::F32) => {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_double");
@@ -718,6 +732,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn check_expr_lit(
         &self,
         lit: &hir::Lit,
+        lint_id: HirId,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
@@ -765,7 +780,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::Float(_) => Some(ty),
                     _ => None,
                 });
-                opt_ty.unwrap_or_else(|| self.next_float_var())
+                opt_ty.unwrap_or_else(|| self.next_float_var(lit.span, Some(lint_id)))
             }
             ast::LitKind::Bool(_) => tcx.types.bool,
             ast::LitKind::CStr(_, _) => Ty::new_imm_ref(

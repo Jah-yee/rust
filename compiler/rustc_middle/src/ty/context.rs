@@ -32,7 +32,7 @@ use rustc_data_structures::sync::{
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, MultiSpan};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::definitions::{DefPathData, Definitions, DisambiguatorState};
+use rustc_hir::definitions::{DefPathData, Definitions, Disambiguator};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::limit::Limit;
@@ -44,7 +44,7 @@ use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_type_ir::TyKind::*;
 pub use rustc_type_ir::lift::Lift;
 use rustc_type_ir::{CollectAndApply, TypeFlags, WithCachedTypeInfo, elaborate, search_graph};
@@ -708,7 +708,7 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
         let attrs = hir::AttributeMap::EMPTY;
 
         let rustc_middle::hir::Hashes { opt_hash_including_bodies, .. } =
-            self.tcx.hash_owner_nodes(node, &bodies, &attrs.map, &[], attrs.define_opaque);
+            self.tcx.hash_owner_nodes(node, &bodies, &attrs.map, attrs.define_opaque);
         let node = node.into();
         self.opt_hir_owner_nodes(Some(self.tcx.arena.alloc(hir::OwnerNodes {
             opt_hash_including_bodies,
@@ -1355,7 +1355,7 @@ impl<'tcx> TyCtxtAt<'tcx> {
         name: Option<Symbol>,
         def_kind: DefKind,
         override_def_path_data: Option<DefPathData>,
-        disambiguator: &mut DisambiguatorState,
+        disambiguator: &mut impl Disambiguator,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
         let feed =
             self.tcx.create_def(parent, name, def_kind, override_def_path_data, disambiguator);
@@ -1373,7 +1373,7 @@ impl<'tcx> TyCtxt<'tcx> {
         name: Option<Symbol>,
         def_kind: DefKind,
         override_def_path_data: Option<DefPathData>,
-        disambiguator: &mut DisambiguatorState,
+        disambiguator: &mut impl Disambiguator,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
         let data = override_def_path_data.unwrap_or_else(|| def_kind.def_path_data(name));
         // The following call has the side effect of modifying the tables inside `definitions`.
@@ -1705,6 +1705,10 @@ impl<'tcx> TyCtxt<'tcx> {
                 // in downstream crates. It should never be linted, but should we
                 // hack this in the linter to ignore it?
                 && f.as_str() != "restricted_std"
+                // `doc_cfg` affects rustdoc behavior: rustdoc checks it via
+                // `tcx.features().doc_cfg()`, but a normal rustc compilation may
+                // never observe that use. Do not lint it as unused here.
+                && *f != sym::doc_cfg
             })
             .collect::<Vec<_>>();
 

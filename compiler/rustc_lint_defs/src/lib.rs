@@ -652,13 +652,8 @@ pub enum DeprecatedSinceKind {
     InVersion(String),
 }
 
-#[derive(Debug, HashStable_Generic)]
+#[derive(Debug)]
 pub enum AttributeLintKind {
-    UnusedDuplicate {
-        this: Span,
-        other: Span,
-        warning: bool,
-    },
     IllFormedAttributeInput {
         suggestions: Vec<String>,
         docs: Option<&'static str>,
@@ -681,10 +676,6 @@ pub enum AttributeLintKind {
         is_used_as_inner: bool,
         target: &'static str,
         target_span: Span,
-    },
-    UnsafeAttrOutsideUnsafe {
-        attribute_name_span: Span,
-        sugg_spans: Option<(Span, Span)>,
     },
     UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
     UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
@@ -733,16 +724,9 @@ pub enum AttributeLintKind {
     MalformedDoc,
     ExpectedNoArgs,
     ExpectedNameValue,
-    MalformedOnUnimplementedAttr {
-        span: Span,
-    },
-    MalformedOnUnknownAttr {
-        span: Span,
-    },
-    MalformedOnConstAttr {
-        span: Span,
-    },
-    MalformedOnMoveAttr {
+    MalFormedDiagnosticAttribute {
+        attribute: &'static str,
+        options: &'static str,
         span: Span,
     },
     MalformedDiagnosticFormat {
@@ -758,14 +742,11 @@ pub enum AttributeLintKind {
         first_span: Span,
         later_span: Span,
     },
-    MissingOptionsForOnUnimplemented,
-    MissingOptionsForOnConst,
-    MissingOptionsForOnUnknown,
-    MissingOptionsForOnMove,
-    OnMoveMalformedFormatLiterals {
-        name: Symbol,
+    MissingOptionsForDiagnosticAttribute {
+        attribute: &'static str,
+        options: &'static str,
     },
-    OnMoveMalformedAttrExpectedLiteralOrDelimiter,
+    NonMetaItemDiagnosticAttribute,
 }
 
 #[derive(Debug, Clone, HashStable_Generic)]
